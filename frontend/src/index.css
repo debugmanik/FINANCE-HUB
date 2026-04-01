@@ -1,0 +1,44 @@
+@import "tailwindcss";
+@custom-variant dark (&:is(.dark *));
+
+html {
+  scroll-behavior: smooth;
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  height: 100%;
+  @apply bg-gray-50 dark:bg-slate-950 transition-colors duration-300 antialiased;
+}
+
+#root {
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+  @apply rounded-md;
+}
+
+.dark .skeleton {
+  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+  background-size: 200% 100%;
+}
+
+/* SAFARI COMPATIBILITY: Removed universal transition-all on * */
+/* It was causing layout hangs and rendering collapses in Safari */
+
+input, select, button {
+  @apply transition-all duration-200 outline-none;
+}
