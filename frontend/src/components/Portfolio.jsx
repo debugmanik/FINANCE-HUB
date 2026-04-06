@@ -13,14 +13,35 @@ const formatCurrency = (val) => {
   }).format(val || 0);
 };
 
-// Helper for time ago
+// Helper for time ago (Institutional Grade)
 const getTimeAgo = (date, current) => {
   if (!date) return 'Never';
-  const diff = Math.floor((current - new Date(date)) / 60000); // mins
-  if (diff < 1) return 'Just now';
-  if (diff < 60) return `${diff}m ago`;
-  if (diff < 1440) return `${Math.floor(diff / 60)}h ago`;
-  return `${Math.floor(diff / 1440)}d ago`;
+  const diffInSecs = Math.floor((current - new Date(date)) / 1000);
+  if (diffInSecs < 60) return `${diffInSecs}s ago`;
+  const diffInMins = Math.floor(diffInSecs / 60);
+  if (diffInMins < 60) return `${diffInMins}m ago`;
+  const diffInHours = Math.floor(diffInMins / 60);
+  return `${diffInHours}h ago`;
+};
+
+// Performance Classification
+const getPerformanceLabel = (roi) => {
+  if (roi > 20) return "🚀 Strong Performance";
+  if (roi >= 5) return "📈 Good";
+  if (roi >= 0) return "🟢 Positive";
+  if (roi >= -5) return "⚠️ Weak";
+  return "🔻 Poor";
+};
+
+// Intelligent Summary
+const getPortfolioInsight = (totalPnL, roi) => {
+  const isProfit = totalPnL >= 0;
+  const absPnL = formatCurrency(Math.abs(totalPnL));
+  const absRoi = Math.abs(roi).toFixed(2);
+  if (isProfit) {
+    return `Portfolio up ${absPnL} (+${absRoi}%) — strong asset allocation`;
+  }
+  return `Portfolio down ${absPnL} (${absRoi}%) — review allocation strategy`;
 };
 
 export default function Portfolio({ onUpdate, remainingBalance }) {
@@ -278,11 +299,14 @@ export default function Portfolio({ onUpdate, remainingBalance }) {
               <h3 className="text-5xl font-extrabold tracking-tighter tabular-nums text-slate-900 dark:text-white">
                 {formatCurrency(summary.totalCurrentValue)}
               </h3>
+              <p className={`text-[11px] font-bold mt-2 ${summary.totalPnL >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                {getPortfolioInsight(summary.totalPnL, summary.roi)}
+              </p>
             </div>
             <div className="flex flex-col items-end gap-1">
                <div className="px-3 py-1 rounded-full text-[10px] bg-slate-100 dark:bg-white/5 text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                Manual Tracking
+                {getPerformanceLabel(summary.roi)}
               </div>
             </div>
           </div>
@@ -292,7 +316,7 @@ export default function Portfolio({ onUpdate, remainingBalance }) {
               <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest">Total P/L</p>
               <p className={`text-xl font-black flex items-center gap-1.5 tabular-nums ${summary.totalPnL >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                 {summary.totalPnL >= 0 ? '+' : '-'}{formatCurrency(Math.abs(summary.totalPnL))} 
-                <span className="text-xs opacity-60">({summary.roi >= 0 ? '+' : ''}{summary.roi.toFixed(2)}%)</span>
+                <span className="text-xs opacity-60">({summary.totalPnL >= 0 ? '+' : ''}{summary.roi.toFixed(2)}%)</span>
               </p>
             </div>
             <div className="space-y-0.5">
@@ -369,12 +393,16 @@ export default function Portfolio({ onUpdate, remainingBalance }) {
                   </tr>
                 ))
               ) : portfolio.length === 0 ? (
-                <tr>
+                <tr key="empty" className="bg-slate-50/30 dark:bg-white/[0.01]">
                   <td colSpan="7" className="px-6 py-40 text-center">
-                    <div className="flex flex-col items-center gap-6 opacity-30 grayscale">
-                       <Plus className="w-16 h-16 bg-slate-100 dark:bg-white/5 p-4 rounded-full" />
-                       <p className="text-2xl font-black uppercase tracking-tighter">No Assets Tracked</p>
-                       <p className="text-xs font-bold tracking-widest text-blue-500">Add your first investment 🚀</p>
+                    <div className="flex flex-col items-center gap-6">
+                       <div className="w-20 h-20 bg-white dark:bg-white/5 flex items-center justify-center rounded-3xl shadow-xl shadow-blue-500/10 animate-bounce border border-slate-200 dark:border-white/10">
+                          <Plus className="w-8 h-8 text-blue-500" />
+                       </div>
+                       <div className="space-y-2">
+                          <p className="text-2xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">Start building your portfolio 🚀</p>
+                          <p className="text-[11px] font-bold tracking-[0.2em] text-blue-600 dark:text-blue-400 capitalize">Add your first investment to see institutional insights</p>
+                       </div>
                     </div>
                   </td>
                 </tr>
@@ -389,7 +417,9 @@ export default function Portfolio({ onUpdate, remainingBalance }) {
                       <td className="px-6 py-6">
                         <div className="flex flex-col">
                            <span className="text-[13px] font-black text-slate-900 dark:text-white tracking-tight">{asset.stockName}</span>
-                           <span className="text-[10px] font-bold text-slate-400 font-mono tracking-widest">{asset.symbol}</span>
+                           <span className="text-[10px] font-bold text-slate-400 font-mono tracking-widest">
+                             {asset.symbol} → {((asset.currentValue / (summary.totalCurrentValue || 1)) * 100).toFixed(1)}% of portfolio
+                           </span>
                         </div>
                       </td>
                       <td className="px-6 py-6 text-sm font-black text-right tabular-nums dark:text-white">{asset.quantity}</td>
@@ -432,8 +462,8 @@ export default function Portfolio({ onUpdate, remainingBalance }) {
                       </td>
                       <td className="px-6 py-6 text-[13px] font-black text-right tabular-nums dark:text-white">{formatCurrency(asset.currentValue)}</td>
                       <td className="px-6 py-6 text-right">
-                         <div className={`px-4 py-2 rounded-xl text-[11px] font-black tabular-nums inline-block border ${isProfit ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-red-500/10 border-red-500/20 text-red-500'}`}>
-                           {isProfit ? '+' : ''}{formatCurrency(asset.profitLoss)}
+                         <div className={`px-4 py-2 rounded-xl text-[11px] font-black tabular-nums inline-block border transition-all ${isProfit ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500 profit-glow' : 'bg-red-500/10 border-red-500/20 text-red-500'}`}>
+                           {isProfit ? '+' : ''}{formatCurrency(asset.profitLoss)} ({isProfit ? '+' : ''}{asset.roi.toFixed(2)}%)
                          </div>
                       </td>
                       <td className="px-6 py-6 text-right">

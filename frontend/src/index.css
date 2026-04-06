@@ -42,3 +42,12 @@ body {
 input, select, button {
   @apply transition-all duration-200 outline-none;
 }
+
+.profit-glow {
+  box-shadow: 0 0 15px -3px rgba(16, 185, 129, 0.2);
+  @apply border-emerald-500/30;
+}
+
+.dark .profit-glow {
+  box-shadow: 0 0 20px -5px rgba(16, 185, 129, 0.3);
+}
