@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { getExpensesAPI, addExpenseAPI, editExpenseAPI, removeExpenseAPI } from '../services/api';
-import { Plus, Wallet, Tag, Edit3, Trash2, CheckCircle, ChevronUp, ChevronDown, Filter, Rocket } from 'lucide-react';
+import { Plus, Wallet, Tag, Edit3, Trash2, CheckCircle, ChevronUp, ChevronDown, Filter, Rocket, AlertTriangle, TrendingUp, TrendingDown, Info, Zap } from 'lucide-react';
 import Modal from './Modal';
 
 const CATEGORIES = ['All', 'Food', 'Transport', 'Utilities', 'Entertainment', 'Shopping', 'Health', 'Other'];
@@ -77,6 +77,75 @@ export default function ExpenseTracker({ onUpdate, income = 0 }) {
 
     return result;
   }, [expenses, sortConfig, activeFilter]);
+
+  // --- INTELLIGENCE LAYER ---
+  const intelligence = useMemo(() => {
+    if (expenses.length === 0) return null;
+
+    const totalSpent = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const avgDaily = totalSpent / 30; // Approximation
+
+    // Category Analytics
+    const categoryMap = {};
+    expenses.forEach(exp => {
+      categoryMap[exp.category] = (categoryMap[exp.category] || 0) + exp.amount;
+    });
+    
+    const categoryStats = Object.keys(categoryMap).map(cat => ({
+      name: cat,
+      total: categoryMap[cat],
+      percent: Math.round((categoryMap[cat] / totalSpent) * 100)
+    })).sort((a, b) => b.total - a.total);
+
+    const topCategory = categoryStats[0];
+
+    // Monthly Trends
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    const currentMonthExpenses = expenses.filter(e => {
+      const d = new Date(e.date);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    });
+    
+    const prevMonthExpenses = expenses.filter(e => {
+      const d = new Date(e.date);
+      const prevM = currentMonth === 0 ? 11 : currentMonth - 1;
+      const prevY = currentMonth === 0 ? currentYear - 1 : currentYear;
+      return d.getMonth() === prevM && d.getFullYear() === prevY;
+    });
+
+    const currentTotal = currentMonthExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const prevTotal = prevMonthExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const monthlyChange = prevTotal > 0 ? Math.round(((currentTotal - prevTotal) / prevTotal) * 100) : 0;
+
+    // Spending Alerts
+    const alerts = [];
+    categoryStats.forEach(stat => {
+      if (stat.percent > 50) alerts.push(`High spending detected in ${stat.name} (${stat.percent}%)`);
+    });
+    
+    if (income > 0 && totalSpent > (income * 0.7)) {
+      alerts.push(`Spending reaching critical level (${Math.round((totalSpent/income)*100)}% of income)`);
+    }
+
+    // Smart Summary
+    let summary = "Spending under control — optimized distribution";
+    if (topCategory.percent > 60) summary = `${topCategory.name} expenses dominating — rebalance suggested`;
+    if (monthlyChange > 15) summary = `Expenses increased ${monthlyChange}% this month — review required`;
+    if (totalSpent > income && income > 0) summary = "Spending exceeded income — immediate attention needed";
+
+    return {
+      totalSpent,
+      categoryStats,
+      topCategory,
+      monthlyChange,
+      alerts,
+      summary,
+      avgDaily
+    };
+  }, [expenses, income]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -206,6 +275,61 @@ export default function ExpenseTracker({ onUpdate, income = 0 }) {
         </button>
       </div>
 
+      {/* Intelligence Layer Injection */}
+      {intelligence && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
+          {/* Main Insight Card */}
+          <div className="lg:col-span-8 insight-card rounded-[32px] p-6 flex flex-col justify-center relative overflow-hidden group border border-slate-100 dark:border-white/5">
+            <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity">
+              <Zap className="w-32 h-32" />
+            </div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-blue-500/10 rounded-lg">
+                <Info className="w-4 h-4 text-blue-500" />
+              </div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Smart Intelligence Summary</span>
+            </div>
+            <h3 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">
+              {intelligence.summary}
+            </h3>
+            <p className="mt-2 text-xs text-slate-500 font-medium">
+              {intelligence.topCategory.name} accounts for {intelligence.topCategory.percent}% of total expenses
+            </p>
+          </div>
+
+          {/* Monthly Trend & Alerts */}
+          <div className="lg:col-span-4 flex flex-col gap-4">
+            <div className="insight-card rounded-3xl p-5 border border-slate-100 dark:border-white/5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Monthly Trend</span>
+                {intelligence.monthlyChange !== 0 && (
+                  <span className={`flex items-center gap-1 text-[10px] font-bold ${intelligence.monthlyChange > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                    {intelligence.monthlyChange > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                    {Math.abs(intelligence.monthlyChange)}% vs last month
+                  </span>
+                )}
+              </div>
+              <div className="mt-2 text-lg font-bold text-slate-900 dark:text-white">
+                ₹{intelligence.totalSpent.toLocaleString('en-IN')}
+              </div>
+            </div>
+
+            {intelligence.alerts.length > 0 && (
+              <div className="bg-rose-500/5 dark:bg-rose-500/10 border border-rose-500/20 rounded-3xl p-4 expense-alert-glow">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    {intelligence.alerts.map((alert, idx) => (
+                      <p key={idx} className="text-[11px] font-bold text-rose-600 dark:text-rose-400 leading-tight">{alert}</p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Elite Table */}
       <div className="flex-1 overflow-hidden flex flex-col bg-white dark:bg-transparent rounded-2xl">
         <div className="overflow-x-auto overflow-y-auto max-h-[600px] no-scrollbar">
@@ -243,16 +367,28 @@ export default function ExpenseTracker({ onUpdate, income = 0 }) {
               ) : filteredAndSortedExpenses.length === 0 ? (
                 <tr>
                   <td colSpan="5" className="px-6 py-32 text-center">
-                    <div className="flex flex-col items-center gap-4 opacity-30">
-                      <Rocket className="w-12 h-12 text-slate-400" />
-                      <p className="text-xl font-medium tracking-tight">Start tracking your expenses 🚀</p>
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="w-16 h-16 bg-slate-50 dark:bg-white/5 rounded-full flex items-center justify-center">
+                        <Rocket className="w-8 h-8 text-slate-400" />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Start tracking your expenses 🚀</p>
+                        <p className="text-sm text-slate-500 mt-1 font-medium italic">Gain deep behavioral insights into your spending patterns</p>
+                      </div>
                     </div>
                   </td>
                 </tr>
               ) : (
                 filteredAndSortedExpenses.map((exp) => (
                   <tr key={exp._id} className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors">
-                    <td className="px-6 py-5 text-sm font-semibold text-slate-900 dark:text-white">{exp.category}</td>
+                    <td className="px-6 py-5">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-slate-900 dark:text-white">{exp.category}</span>
+                        {intelligence && exp.amount > (intelligence.avgDaily * 1.5) && (
+                          <span className="text-[8px] font-bold text-rose-500 uppercase tracking-widest mt-0.5">High-Value Entry</span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-6 py-5 text-sm font-bold text-slate-900 dark:text-white text-right font-mono">₹{exp.amount.toLocaleString('en-IN')}</td>
                     <td className="px-6 py-5 text-xs font-semibold text-slate-400 whitespace-nowrap">
                       {new Date(exp.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
