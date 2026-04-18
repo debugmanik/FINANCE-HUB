@@ -4,6 +4,13 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+// Generate JWT
+const generateToken = (id) => {
+  return jwt.sign({ id: id.toString() }, process.env.JWT_SECRET, {
+    expiresIn: '30d',
+  });
+};
+
 // Register User
 router.post('/register', async (req, res) => {
   const { name, email, password } = req.body;
@@ -60,13 +67,6 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
-
-// Generate JWT
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: '30d',
-  });
-};
 
 const { protect } = require('../middleware/authMiddleware');
 
