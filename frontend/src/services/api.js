@@ -19,6 +19,22 @@ api.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
+// Interceptor to handle expired tokens
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (
+      error.response &&
+      error.response.status === 401 &&
+      error.response.data.message === 'Not authorized, token failed'
+    ) {
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
 // API calls specifically for Expenses
 export const getExpensesAPI = () => api.get('/api/expenses');
 export const addExpenseAPI = (expenseData) => api.post('/api/expenses', expenseData);
