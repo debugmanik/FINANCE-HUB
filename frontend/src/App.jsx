@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './components/Login';
 import Signup from './components/Signup';
@@ -51,33 +52,35 @@ function App() {
     <Router>
       <ThemeProvider>
         <AuthProvider>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route 
-              path="/dashboard" 
-              element={
-                <ProtectedRoute>
-                  <Dashboard 
-                    metrics={metrics} 
-                    onUpdate={fetchGlobalMetrics} 
-                  />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/decision-hub" 
-              element={
-                <ProtectedRoute>
-                  <DecisionHub 
-                    metrics={metrics} 
-                    onUpdate={fetchGlobalMetrics} 
-                  />
-                </ProtectedRoute>
-              } 
-            />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
+          <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ""}>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route 
+                path="/dashboard" 
+                element={
+                  <ProtectedRoute>
+                    <Dashboard 
+                      metrics={metrics} 
+                      onUpdate={fetchGlobalMetrics} 
+                    />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/decision-hub" 
+                element={
+                  <ProtectedRoute>
+                    <DecisionHub 
+                      metrics={metrics} 
+                      onUpdate={fetchGlobalMetrics} 
+                    />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </GoogleOAuthProvider>
         </AuthProvider>
       </ThemeProvider>
     </Router>

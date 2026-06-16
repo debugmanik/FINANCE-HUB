@@ -8,12 +8,13 @@ import {
 } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import { Mail, Lock, LogIn } from "lucide-react";
+import { GoogleLogin } from "@react-oauth/google";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const { login } = useContext(AuthContext);
+  const { login, loginWithGoogle } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -74,6 +75,31 @@ export default function Login() {
             Sign In
           </button>
         </form>
+
+        <div className="flex items-center my-6">
+          <div className="flex-grow border-t border-zinc-800"></div>
+          <span className="flex-shrink mx-4 text-zinc-500 text-xs uppercase tracking-wider">or continue with</span>
+          <div className="flex-grow border-t border-zinc-800"></div>
+        </div>
+
+        <div className="flex justify-center w-full">
+          <GoogleLogin
+            onSuccess={async (credentialResponse) => {
+              setError("");
+              const result = await loginWithGoogle(credentialResponse.credential);
+              if (result.success) {
+                navigate("/dashboard");
+              } else {
+                setError(result.message);
+              }
+            }}
+            onError={() => {
+              setError("Google sign in failed. Please try again.");
+            }}
+            theme="filled_dark"
+            shape="rectangular"
+          />
+        </div>
         <p className="text-zinc-500 text-center mt-6 text-sm">
           Don't have an account? <Link to="/signup" className="text-blue-500 hover:text-blue-400 transition-colors">Sign up</Link>
         </p>

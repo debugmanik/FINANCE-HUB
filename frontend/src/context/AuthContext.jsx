@@ -56,8 +56,24 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('user');
   };
 
+  const loginWithGoogle = async (credential) => {
+    try {
+      const res = await axios.post('/api/auth/google', {
+        credential,
+      });
+      setUser(res.data);
+      localStorage.setItem('user', JSON.stringify(res.data));
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Google login failed',
+      };
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );
